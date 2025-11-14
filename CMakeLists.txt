@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.17)
 if(CMAKE_C_COMPILER)
 endif()
 
-set(LIBNAME "EXTENSION-NAME" CACHE STRING "The name of the library")
+set(LIBNAME "godot-orbbec" CACHE STRING "The name of the library")
 set(GODOT_PROJECT_DIR "demo" CACHE STRING "The directory of a Godot project folder")
 
 # Make sure all the dependencies are satisfied
@@ -25,6 +25,16 @@ if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/godot-cpp/src")
     )
 endif()
 add_subdirectory(godot-cpp SYSTEM)
+
+# We need this because otherwise the orbbec sdk cmake tries to copy xml files to root.
+# TODO: figure out if we need those config file somewhere and if so how to put them at
+# the right location in a godot project.
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(OB_BUILD_EXAMPLES FALSE)
+set(OB_BUILD_TESTS FALSE)
+set(OB_BUILD_DOCS FALSE)
+set(OB_BUILD_TOOLS FALSE)
+add_subdirectory(3rdparty/OrbbecSDK_v2 SYSTEM)
 
 # Add godot-cpp's module path and include the exported functions.
 # This is made available for documentation generation
@@ -49,8 +59,8 @@ target_sources(${LIBNAME}
     PRIVATE
     src/register_types.cpp
     src/register_types.h
-    src/example_class.cpp
-    src/example_class.h
+    src/orbbec.cpp
+    src/orbbec.hpp
 )
 
 # Fetch a list of the xml files to use for documentation and add to our target
@@ -63,7 +73,8 @@ if(DOC_XML)
     endif()
 endif()
 
-target_link_libraries(${LIBNAME} PRIVATE godot-cpp)
+target_link_libraries(${LIBNAME}
+  PRIVATE godot-cpp OrbbecSDK)
 
 # Require at least C++17 for this target
 set_property(TARGET ${LIBNAME} PROPERTY CXX_STANDARD 17)
@@ -82,3 +93,4 @@ set(GODOT_PROJECT_BINARY_DIR "${PROJECT_SOURCE_DIR}/${GODOT_PROJECT_DIR}/bin/${G
 add_custom_command(TARGET ${LIBNAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${LIBNAME}>" "${GODOT_PROJECT_BINARY_DIR}/$<TARGET_FILE_NAME:${LIBNAME}>"
 )
+add_compile_options(-Wno-error)
