@@ -1,6 +1,36 @@
-[gd_scene load_steps=2 format=3 uid="uid://dh0oj81pufivs"]
+[gd_scene load_steps=6 format=3 uid="uid://dh0oj81pufivs"]
 
 [ext_resource type="Script" uid="uid://bkwk40ybs8kgm" path="res://example.gd" id="1_jdh55"]
+[ext_resource type="Script" uid="uid://bdftf7bk23x0w" path="res://multi_mesh_instance_3d.gd" id="2_n51mc"]
+[ext_resource type="Script" uid="uid://wnc361a2l0ga" path="res://multi_mesh_instance_3d_2.gd" id="3_8lvy3"]
 
-[node name="Node" type="Node"]
+[sub_resource type="Environment" id="Environment_n51mc"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_n51mc"]
+
+[node name="Node" type="Node3D"]
 script = ExtResource("1_jdh55")
+
+[node name="pointcloudfromfile" type="MultiMeshInstance3D" parent="."]
+visible = false
+script = ExtResource("3_8lvy3")
+color = Color(0.8862745, 0, 0, 1)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_n51mc")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="WorldEnvironment"]
+
+[node name="MultiMeshInstance3D" type="MultiMeshInstance3D" parent="."]
+script = ExtResource("2_n51mc")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.9395015, -0.34254485, 0, 0.34254485, 0.9395015, 0, -1.5644388, 8.222342)
+
+[node name="Orbbec" type="Orbbec" parent="."]
+unique_name_in_owner = true
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_n51mc")
+
+[connection signal="point_cloud_frame" from="Orbbec" to="MultiMeshInstance3D" method="_on_orbbec_point_cloud_frame"]
