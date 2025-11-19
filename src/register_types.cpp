@@ -14,7 +14,8 @@ void initialize_gdextension_types(ModuleInitializationLevel p_level)
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
-	GDREGISTER_CLASS(Orbbec);
+        GDREGISTER_CLASS(OrbbecDevices);
+	GDREGISTER_CLASS(OrbbecPointCloud);
 }
 
 void uninitialize_gdextension_types(ModuleInitializationLevel p_level) {

@@ -2,36 +2,84 @@
 #include <libobsensor/ObSensor.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
-void Orbbec::_bind_methods() {
-  godot::ClassDB::bind_method(D_METHOD("print_hello"), &Orbbec::print_hello);
+void OrbbecDevices::_bind_methods() {
+  godot::ClassDB::bind_method(D_METHOD("refresh_device_list"), &OrbbecDevices::refresh_device_list);
+  godot::ClassDB::bind_method(D_METHOD("get_devices_ips"), &OrbbecDevices::get_devices_ips);
+  godot::ClassDB::bind_method(D_METHOD("get_devices_serial_numbers"), &OrbbecDevices::get_devices_serial_numbers);
+  ADD_SIGNAL(MethodInfo("device_list_refreshed", PropertyInfo(Variant::OBJECT, "node")));
+}
+
+void OrbbecDevices::refresh_device_list() {
+  devices = ob_ctx.queryDeviceList();
+}
+
+void OrbbecDevices::_ready() {
+  refresh_device_list();
+  emit_signal("point_cloud_frame", this);
+}
+
+PackedStringArray OrbbecDevices::get_devices_ips() {
+  PackedStringArray ips;
+  if (!devices) {
+    return ips;
+  }
+  for (uint32_t i = 0; i < devices->getCount(); ++i) {
+    ips.push_back(devices->getIpAddress(i));
+  }
+  return ips;
+}
+
+PackedStringArray OrbbecDevices::get_devices_serial_numbers() {
+  PackedStringArray serials;
+  if (!devices) {
+    return serials;
+  }
+  for (uint32_t i = 0; i < devices->getCount(); ++i) {
+    serials.push_back(devices->getSerialNumber(i));
+  }
+  return serials;
+};
+
+void OrbbecPointCloud::_bind_methods() {
+  godot::ClassDB::bind_method(D_METHOD("start_stream"), &OrbbecPointCloud::start_stream);
+  godot::ClassDB::bind_method(D_METHOD("set_device_from_ip", "ip"), &OrbbecPointCloud::set_device_from_ip);
+  godot::ClassDB::bind_method(D_METHOD("set_device_from_serial_number", "serial_number"), &OrbbecPointCloud::set_device_from_serial_number);
   ADD_SIGNAL(MethodInfo("point_cloud_frame", PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "new_point_cloud_frame")));
 }
 
-void Orbbec::print_hello() {
+void OrbbecPointCloud::set_device_from_predicate(predicate_type predicate) {
   std::shared_ptr<ob::DeviceList> devices = ob_ctx.queryDeviceList();
-  print_line(devices->getCount());
-  print_line("aaaaa");
-  print_line(" devices");
   for (uint32_t i = 0; i < devices->getCount(); ++i) {
-    print_line(devices->getSerialNumber(i));
-    print_line(devices->getConnectionType(i));
-    print_line(devices->getIpAddress(i));
-    if (std::string(devices->getIpAddress(i)) == "10.10.30.182") {
-      device = devices->getDevice(i);
+    if (predicate(devices, i)) {
+      try {
+        device = devices->getDevice(i);
+      } catch (std::exception & ex) {
+        // TODO: throw a real godot error here.
+        print_line("couldn't open device: ");
+        print_line(ex.what());
+      }
+      return;
     }
   }
-  start_stream();
 }
 
-void Orbbec::populate_device_from_idx(uint32_t idx) {
-  std::shared_ptr<ob::DeviceList> devices = ob_ctx.queryDeviceList();
-  print_line(devices->getSerialNumber(idx));
-  print_line(devices->getConnectionType(idx));
-  print_line(devices->getIpAddress(idx));
+void OrbbecPointCloud::set_device_from_ip(String ip) {
+  set_device_from_predicate([&](std::shared_ptr<ob::DeviceList> devices, uint32_t idx) {
+    return devices->getIpAddress(idx) == ip;
+  });
 }
 
-void Orbbec::start_stream() {
-  print_line("start_stream");
+void OrbbecPointCloud::set_device_from_serial_number(String serial_number) {
+  set_device_from_predicate([&](std::shared_ptr<ob::DeviceList> devices, uint32_t idx) {
+    return devices->getSerialNumber(idx) == serial_number;
+  });
+}
+
+void OrbbecPointCloud::start_stream() {
+  if (!device) {
+    print_line("Not starting stream, please set a device.");
+    return;
+  }
   try {
     // stolen from the savePointCloudToPly function of the orbbec sdk. I assume this value filters out irrelevant points ?
     // populate_device_from_idx(idx);
@@ -67,13 +115,11 @@ void Orbbec::start_stream() {
         }
       }
       point_cloud_data.resize(real_size);
-      // print_line("emit");
-      // emit_signal("point_cloud_frame", point_cloud_data);
+      // need to call_deferred because this code ends up being called outside of the engine thread.
       call_deferred("emit_signal", "point_cloud_frame", point_cloud_data);
     });
   }
   catch( const std::exception & ex ) {
     print_line(ex.what());
   }
-
 }

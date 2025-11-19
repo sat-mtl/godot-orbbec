@@ -19,8 +19,11 @@ func _ready():
 func _process(_delta):
 	if redraw:
 		multimesh.instance_count = len(points)
+		# TODO: there is a way to set a whole PackedFloat32Array as the multimesh's buffer.
+		# This may be faster than iterating and creating a transform3D.
+		# see https://docs.godotengine.org/en/stable/classes/class_renderingserver.html#class-renderingserver-method-multimesh-set-buffer
+		# it references rendering server but it works in gdscript too. We could even generate the packed array in C++ directly.
 		for i in multimesh.instance_count:
-			
 			multimesh.set_instance_transform(i, Transform3D(Basis(), points[i]))   
 		redraw = false 
 
