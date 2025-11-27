@@ -54,7 +54,7 @@ protected:
   static void _bind_methods();
 
 public:
-  OrbbecPointCloud() = default;
+  OrbbecPointCloud();
   ~OrbbecPointCloud() override = default;
 
   void print_hello();
@@ -62,8 +62,12 @@ public:
   void start_stream();
   void set_device_from_ip(String ip);
   void set_device_from_serial_number(String serial_number);
-
+  void set_thinning(float thinning);
+  float get_thinning();
 private:
+  float thinning = 0.5;
+  static constexpr size_t thinning_mask_size = 100000;
+  std::array<float, thinning_mask_size> thinning_mask;
   std::unique_ptr<ob::Pipeline> pipeline;
   std::unique_ptr<ob::PointCloudFilter> point_cloud_filter = std::make_unique<ob::PointCloudFilter>();
   std::shared_ptr<ob::Device> device;

@@ -1,6 +1,7 @@
 #include "orbbec.hpp"
 #include <libobsensor/ObSensor.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
+#include <stdlib.h>
 
 void OrbbecDevices::_bind_methods() {
   godot::ClassDB::bind_method(D_METHOD("refresh_device_list"), &OrbbecDevices::refresh_device_list);
@@ -40,10 +41,28 @@ PackedStringArray OrbbecDevices::get_devices_serial_numbers() {
   return serials;
 };
 
+OrbbecPointCloud::OrbbecPointCloud() {
+  // create a random thinning mask.
+  for (int i=0; i < thinning_mask_size; ++i) {
+    thinning_mask[i] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+  }
+}
+
+void OrbbecPointCloud::set_thinning(float thin) {
+  thinning = thin;
+}
+
+float OrbbecPointCloud::get_thinning() {
+  return thinning;
+}
+
 void OrbbecPointCloud::_bind_methods() {
   godot::ClassDB::bind_method(D_METHOD("start_stream"), &OrbbecPointCloud::start_stream);
   godot::ClassDB::bind_method(D_METHOD("set_device_from_ip", "ip"), &OrbbecPointCloud::set_device_from_ip);
   godot::ClassDB::bind_method(D_METHOD("set_device_from_serial_number", "serial_number"), &OrbbecPointCloud::set_device_from_serial_number);
+  godot::ClassDB::bind_method(D_METHOD("get_thinning"), &OrbbecPointCloud::get_thinning);
+  godot::ClassDB::bind_method(D_METHOD("set_thinning", "p_thinning"), &OrbbecPointCloud::set_thinning);
+  ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "thinning"), "set_thinning", "get_thinning");
   ADD_SIGNAL(MethodInfo("point_cloud_frame", PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "new_point_cloud_frame")));
 }
 
@@ -93,7 +112,7 @@ void OrbbecPointCloud::start_stream() {
     // set frame aggregate output mode to all type frame require. therefor, the output frameset will contain all type of frames
     config->setFrameAggregateOutputMode(OB_FRAME_AGGREGATE_OUTPUT_ALL_TYPE_FRAME_REQUIRE);
     // 4.Start the pipeline with config and callback.
-    pipeline->start(config, [&](std::shared_ptr<ob::FrameSet> frameSet) {
+    pipeline->start(config, [&, this](std::shared_ptr<ob::FrameSet> frameSet) {
       // print_line("got frameset");
       auto frame = point_cloud_filter->process(frameSet)->as<ob::PointsFrame>();
       uint32_t width  = frame->getWidth();
@@ -108,8 +127,8 @@ void OrbbecPointCloud::start_stream() {
         for(uint32_t x = 0; x < width; ++x) {
           int idx = y * width + x;
           const auto &pt = points[idx];
-          if(std::fabs(pt.z) >= min_point_value) {
-            point_cloud_data[real_size] = Vector3(pt.x/1000.0f, pt.y/1000.0f, pt.z/1000.0f);
+          if (thinning_mask[idx%thinning_mask_size] > thinning && std::fabs(pt.z) >= min_point_value) {
+            point_cloud_data[real_size] = Vector3(pt.x/1000.0f, -pt.y/1000.0f, pt.z/1000.0f);
             real_size+=1;
           }
         }
