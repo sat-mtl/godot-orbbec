@@ -3,4 +3,4 @@
 # This works on arch linux. it does not work on gcc
 
 cmake -B build -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_COMPILER="clang++" -DCMAKE_C_COMPILER="clang"
-cmake --build build
+make -sC build -j8
