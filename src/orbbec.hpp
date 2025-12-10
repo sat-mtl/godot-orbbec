@@ -60,6 +60,7 @@ public:
   void print_hello();
   void get_sensor_from_idx(uint32_t idx);
   void start_stream();
+  void stop_stream();
   void set_device_from_ip(String ip);
   void set_device_from_serial_number(String serial_number);
   void set_thinning(float thinning);

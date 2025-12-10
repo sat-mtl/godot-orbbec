@@ -58,6 +58,7 @@ float OrbbecPointCloud::get_thinning() {
 
 void OrbbecPointCloud::_bind_methods() {
   godot::ClassDB::bind_method(D_METHOD("start_stream"), &OrbbecPointCloud::start_stream);
+  godot::ClassDB::bind_method(D_METHOD("stop_stream"), &OrbbecPointCloud::stop_stream);
   godot::ClassDB::bind_method(D_METHOD("set_device_from_ip", "ip"), &OrbbecPointCloud::set_device_from_ip);
   godot::ClassDB::bind_method(D_METHOD("set_device_from_serial_number", "serial_number"), &OrbbecPointCloud::set_device_from_serial_number);
   godot::ClassDB::bind_method(D_METHOD("get_thinning"), &OrbbecPointCloud::get_thinning);
@@ -92,6 +93,13 @@ void OrbbecPointCloud::set_device_from_serial_number(String serial_number) {
   set_device_from_predicate([&](std::shared_ptr<ob::DeviceList> devices, uint32_t idx) {
     return devices->getSerialNumber(idx) == serial_number;
   });
+}
+
+void OrbbecPointCloud::stop_stream() {
+  // deleting the pipeline makes the stream stop.
+  pipeline.reset();
+  // probably don't need to do this but it can't hurt too much
+  config.reset();
 }
 
 void OrbbecPointCloud::start_stream() {
