@@ -1,4 +1,4 @@
-echo off
+echo on
 setlocal
 
 cd /d "%~dp0"
@@ -21,8 +21,9 @@ echo  Setting up MSVC 17 (Visual Studio 2022)
 echo ============================================
 
 if not defined VSINSTALLDIR (
-    REM Adjust path if you have a different edition (Community/Professional/Enterprise)
+    :: Adjust path if you have a different edition (Community/Professional/Enterprise)
     call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+    call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
 )
 
 :: ===========================================
