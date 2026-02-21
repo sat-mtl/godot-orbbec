@@ -1,5 +1,9 @@
 # build folder
 build/*
+bin/*
+# emacs stuff
+.dir.locals.el
+\#*.*\#
 # Godot auto generated files
 *.gen.*
 .godot/
