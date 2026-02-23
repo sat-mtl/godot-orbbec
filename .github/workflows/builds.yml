@@ -66,9 +66,9 @@ jobs:
 
       - name: Windows - build
         if: ${{ matrix.target.platform == 'windows' }}
-        shell: pwsh
+        shell: cmd
         run: |
-          build_windows.cmd
+          cmd /c call "build_windows.cmd"
 
       # Clean up compilation files
       - name: Windows - Delete compilation files
