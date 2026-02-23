@@ -4,4 +4,4 @@ orbbec SDK 2 wrapper GDExtension for godot 4.5+
 
 ## Current status
 
-Barely started.
+Works on linux, currently tested with orbbec femto mega.
