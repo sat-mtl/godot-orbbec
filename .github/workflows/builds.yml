@@ -38,14 +38,6 @@ jobs:
         with:
           submodules: true
 
-      # Setup dependencies
-      - name: Setup godot-cpp
-        if: ${{ matrix.target.platform != 'windows' }}
-        uses: ./godot-cpp/.github/actions/setup-godot-cpp
-        with:
-          platform: ${{ matrix.target.platform }}
-          em-version: 3.1.62
-
       - name: linux - build
         if: ${{ matrix.target.platform != 'windows' }}
         shell: bash
