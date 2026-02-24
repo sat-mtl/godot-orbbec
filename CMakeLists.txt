@@ -30,10 +30,10 @@ add_subdirectory(godot-cpp SYSTEM)
 # TODO: figure out if we need those config file somewhere and if so how to put them at
 # the right location in a godot project.
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
-set(OB_BUILD_EXAMPLES FALSE)
-set(OB_BUILD_TESTS FALSE)
-set(OB_BUILD_DOCS FALSE)
-set(OB_BUILD_TOOLS FALSE)
+set(OB_BUILD_EXAMPLES FALSE CACHE "" INTERNAL)
+set(OB_BUILD_TESTS FALSE CACHE "" INTERNAL)
+set(OB_BUILD_DOCS FALSE CACHE "" INTERNAL)
+set(OB_BUILD_TOOLS FALSE CACHE "" INTERNAL)
 add_subdirectory(3rdparty/OrbbecSDK_v2 SYSTEM)
 
 # Add godot-cpp's module path and include the exported functions.
@@ -93,4 +93,12 @@ set(GODOT_PROJECT_BINARY_DIR "${PROJECT_SOURCE_DIR}/${GODOT_PROJECT_DIR}/bin/${G
 add_custom_command(TARGET ${LIBNAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${LIBNAME}>" "${GODOT_PROJECT_BINARY_DIR}/$<TARGET_FILE_NAME:${LIBNAME}>"
 )
-add_compile_options(-Wno-error)
+
+if (WIN32)
+  # fetch OrbbecSDK.dll when compiling under windows.
+  add_custom_command(TARGET ${LIBNAME} POST_BUILD
+    # COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE_DIR:${LIBNAME}>/OrbbecSDK.dll" "${GODOT_PROJECT_BINARY_DIR}/OrbbecSDK.dll"
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:OrbbecSDK>" "${GODOT_PROJECT_BINARY_DIR}/OrbbecSDK.dll"
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:OrbbecSDK>" "$<TARGET_FILE_DIR:${LIBNAME}>/OrbbecSDK.dll"
+  )
+ENDIF()
