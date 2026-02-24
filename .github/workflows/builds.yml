@@ -57,7 +57,7 @@ jobs:
         run: |
           set template="${{ matrix.target-type }}"
           if "%template%"=="template_release" (
-             set BUILD_RELEASE=YES
+             setx BUILD_RELEASE=YES
              cmd /c call "build_windows.cmd"
           ) else (
              cmd /c call "build_windows.cmd"

@@ -43,9 +43,9 @@ echo ============================================
 
 if "%BUILD_RELEASE%"=="" (
     :: if BUILD_RELEASE is unset, build in debug mode
-    cmake -B build -DCMAKE_POLICY_VERSION_MINIMUM="3.5" -GNinja
+    cmake -B build -DCMAKE_POLICY_VERSION_MINIMUM="3.5"
 ) else (
-    cmake -B build -DCMAKE_POLICY_VERSION_MINIMUM="3.5" -GNinja -DGODOTCPP_TARGET="template_release" -DCMAKE_BUILD_TYPE=Release
+    cmake -B build -DCMAKE_POLICY_VERSION_MINIMUM="3.5" -DGODOTCPP_TARGET="template_release"
 )
 
 :: =============================================
@@ -54,8 +54,11 @@ if "%BUILD_RELEASE%"=="" (
 echo ============================================
 echo  Building project
 echo ============================================
-
-cmake --build build
+if "%BUILD_RELEASE%"=="" (
+   cmake --build build
+) else (
+   cmake --build build --config Release
+)
 
 echo ============================================
 echo  Build completed successfully.
