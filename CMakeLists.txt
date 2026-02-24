@@ -30,10 +30,10 @@ add_subdirectory(godot-cpp SYSTEM)
 # TODO: figure out if we need those config file somewhere and if so how to put them at
 # the right location in a godot project.
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
-set(OB_BUILD_EXAMPLES FALSE)
-set(OB_BUILD_TESTS FALSE)
-set(OB_BUILD_DOCS FALSE)
-set(OB_BUILD_TOOLS FALSE)
+set(OB_BUILD_EXAMPLES FALSE CACHE "" INTERNAL)
+set(OB_BUILD_TESTS FALSE CACHE "" INTERNAL)
+set(OB_BUILD_DOCS FALSE CACHE "" INTERNAL)
+set(OB_BUILD_TOOLS FALSE CACHE "" INTERNAL)
 add_subdirectory(3rdparty/OrbbecSDK_v2 SYSTEM)
 
 # Add godot-cpp's module path and include the exported functions.
