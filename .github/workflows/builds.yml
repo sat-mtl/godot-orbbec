@@ -15,10 +15,7 @@ jobs:
 #         # See https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/running-variations-of-jobs-in-a-workflow
         target:
           [
-#             { platform: linux, arch: x86_64, os: ubuntu-22.04 },
-#             { platform: linux, arch: x86_32, os: ubuntu-22.04 },
-#             { platform: linux, arch: arm64, os: ubuntu-22.04-arm },
-#             { platform: linux, arch: arm32, os: ubuntu-22.04-arm },
+            { platform: linux, arch: x86_64, os: ubuntu-24.04 },
             { platform: windows, arch: x86_64, os: windows-latest },
 #             { platform: windows, arch: x86_32, os: windows-latest },
 #             { platform: windows, arch: arm64, os: windows-latest },
@@ -41,28 +38,19 @@ jobs:
         with:
           submodules: true
 
-#       # Add linux x86_32 toolchain
-#       - name: Install multilib support
-#         if: ${{ matrix.target.platform == 'linux' && matrix.target.arch == 'x86_32' }}
-#         run: |
-#           sudo apt-get update && sudo apt-get install -y gcc-multilib g++-multilib
+      # Setup dependencies
+      - name: Setup godot-cpp
+        if: ${{ matrix.target.platform != 'windows' }}
+        uses: ./godot-cpp/.github/actions/setup-godot-cpp
+        with:
+          platform: ${{ matrix.target.platform }}
+          em-version: 3.1.62
 
-#       # Build GDExtension (with caches)
-
-#       - name: Build GDExtension Debug Build
-#         shell: sh
-#         env:
-#           SCONS_CACHE: ${{ github.workspace }}/.scons-cache/
-#         run: |
-#           scons target=${{ matrix.target-type }} platform=${{ matrix.target.platform }} arch=${{ matrix.target.arch }} precision=${{ matrix.float-precision }}
-
-#       # Setup dependencies
-#       - name: Setup godot-cpp
-#         uses: ./godot-cpp/.github/actions/setup-godot-cpp
-#         with:
-#           platform: ${{ matrix.target.platform }}
-#           em-version: 3.1.62
-
+      - name: linux - build
+        if: ${{ matrix.target.platform != 'windows' }}
+        shell: bash
+        run: |
+          ./build.sh
 
       - name: Windows - build
         if: ${{ matrix.target.platform == 'windows' }}
