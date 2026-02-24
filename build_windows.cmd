@@ -43,7 +43,8 @@ echo  Configuring project with CMake
 echo ============================================
 IF DEFINED BUILD_RELEASE (ECHO BUILD_RELEASE IS defined) ELSE (ECHO BUILD_RELEASE is NOT defined)
 echo !BUILD_RELEASE!
-if !BUILD_RELEASE!=="" (
+echo %BUILD_RELEASE%
+if %BUILD_RELEASE%=="" (
     :: if BUILD_RELEASE is unset, build in debug mode
     cmake -B build -DCMAKE_POLICY_VERSION_MINIMUM="3.5"
 ) else (
@@ -56,7 +57,7 @@ if !BUILD_RELEASE!=="" (
 echo ============================================
 echo  Building project
 echo ============================================
-if !BUILD_RELEASE!=="" (
+if %BUILD_RELEASE%=="" (
    cmake --build build
 ) else (
    cmake --build build --config Release

@@ -56,8 +56,7 @@ jobs:
         shell: cmd
         run: |
           setlocal EnableDelayedExpansion
-          set template="${{ matrix.target-type }}"
-          if "!template!"=="template_release" (
+          if "${{ matrix.target-type }}"=="template_release" (
              echo "RELEASE"
              cmd /c "set BUILD_RELEASE=YES && call build_windows.cmd"
           ) else (
