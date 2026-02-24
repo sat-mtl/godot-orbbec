@@ -44,7 +44,7 @@ jobs:
           CODESIGN_APP_SECUREFILEPATH: ${{ inputs.apple-application-cert }}
         shell: bash
         run: |
-          if [ ${{ matrix.target-type }} = "template_release" ]; then
+          if [ "${{ matrix.target-type }}" = "template_release" ]; then
              BUILD_RELEASE=yes ./build.sh
           else
              ./build.sh
