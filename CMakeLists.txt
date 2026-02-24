@@ -101,4 +101,4 @@ if (WIN32)
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:OrbbecSDK>" "${GODOT_PROJECT_BINARY_DIR}/OrbbecSDK.dll"
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:OrbbecSDK>" "$<TARGET_FILE_DIR:${LIBNAME}>/OrbbecSDK.dll"
   )
-ENDIF()
+endif()

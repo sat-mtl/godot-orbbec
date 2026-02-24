@@ -55,11 +55,12 @@ jobs:
         if: ${{ matrix.target.platform == 'windows' }}
         shell: cmd
         run: |
-          if "${{ matrix.target-type }}"=="template_release" (
+          set template="${{ matrix.target-type }}"
+          if "%template%"=="template_release" (
              set BUILD_RELEASE=YES
              cmd /c call "build_windows.cmd"
           ) else (
-             cmake -B build -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DGODOTCPP_TARGET="template_release" -DCMAKE_BUILD_TYPE=Release
+             cmd /c call "build_windows.cmd"
           )
 
 
