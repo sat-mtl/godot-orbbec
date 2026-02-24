@@ -1,4 +1,5 @@
 echo on
+set BUILD_RELEASE=%1
 setlocal EnableDelayedExpansion
 setlocal
 
