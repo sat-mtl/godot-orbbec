@@ -44,7 +44,7 @@ jobs:
           CODESIGN_APP_SECUREFILEPATH: ${{ inputs.apple-application-cert }}
         shell: bash
         run: |
-          if [ ${{ matrix.extra-flags }} = "template_release" ]; then
+          if [ ${{ matrix.target-type }} = "template_release" ]; then
              BUILD_RELEASE=yes ./build.sh
           else
              ./build.sh
@@ -55,7 +55,13 @@ jobs:
         if: ${{ matrix.target.platform == 'windows' }}
         shell: cmd
         run: |
-          cmd /c call "build_windows.cmd"
+          if "${{ matrix.target-type }}"=="template_release" (
+             set BUILD_RELEASE=YES
+             cmd /c call "build_windows.cmd"
+          ) else (
+             cmake -B build -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DGODOTCPP_TARGET="template_release" -DCMAKE_BUILD_TYPE=Release
+          )
+
 
       # Clean up compilation files
       - name: Windows - Delete compilation files

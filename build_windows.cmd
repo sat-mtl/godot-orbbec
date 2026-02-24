@@ -41,7 +41,13 @@ echo ============================================
 echo  Configuring project with CMake
 echo ============================================
 
-cmake -B build -DCMAKE_POLICY_VERSION_MINIMUM="3.5"
+if "%BUILD_RELEASE%"=="" (
+    :: if BUILD_RELEASE is unset, build in debug mode
+    cmake -B build -DCMAKE_POLICY_VERSION_MINIMUM="3.5"
+) else (
+    cmake -B build -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DGODOTCPP_TARGET="template_release" -DCMAKE_BUILD_TYPE=Release
+)
+
 
 :: =============================================
 :: Build the solution
