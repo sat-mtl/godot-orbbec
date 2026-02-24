@@ -1,4 +1,5 @@
 echo on
+setlocal EnableDelayedExpansion
 setlocal
 
 cd /d "%~dp0"
@@ -41,7 +42,7 @@ echo ============================================
 echo  Configuring project with CMake
 echo ============================================
 
-SETLOCAL EnableDelayedExpansion
+echo !BUILD_RELEASE!
 if !BUILD_RELEASE!=="" (
     :: if BUILD_RELEASE is unset, build in debug mode
     cmake -B build -DCMAKE_POLICY_VERSION_MINIMUM="3.5"
