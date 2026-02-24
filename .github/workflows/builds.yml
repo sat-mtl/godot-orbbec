@@ -27,7 +27,7 @@ jobs:
 #             { platform: ios, arch: arm64, os: macos-latest },
 #             { platform: web, arch: wasm32, os: ubuntu-22.04 },
           ]
-        target-type: [template_debug] #, template_release]
+        target-type: [template_debug, template_release]
 #         float-precision: [single, double]
 
     runs-on: ${{ matrix.target.os }}
@@ -40,9 +40,16 @@ jobs:
 
       - name: linux - build
         if: ${{ matrix.target.platform != 'windows' }}
+        env:
+          CODESIGN_APP_SECUREFILEPATH: ${{ inputs.apple-application-cert }}
         shell: bash
         run: |
-          ./build.sh
+          if [ ${{ matrix.extra-flags }} = "template_release" ]; then
+             BUILD_RELEASE=yes ./build.sh
+          else
+             ./build.sh
+          fi
+
 
       - name: Windows - build
         if: ${{ matrix.target.platform == 'windows' }}
