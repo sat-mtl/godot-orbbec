@@ -10,6 +10,7 @@ net session >nul 2>&1
 if %errorlevel% neq 0 (
     echo Administrator privileges required. Exiting.
     exit 1 /b
+    pause
 )
 
 :: ===========================================
@@ -58,9 +59,10 @@ if "%BUILD_RELEASE%"=="" (
 ) else (
    cmake --build build --config Release
 )
-
-echo ============================================
-echo  Build completed successfully.
-echo ============================================
+if %errorlevel% neq 0 (
+   echo ============================================
+   echo  Build completed successfully.
+   echo ============================================
+)
 
 exit /b 0
