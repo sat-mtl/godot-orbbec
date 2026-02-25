@@ -9,8 +9,8 @@ cd /d "%~dp0"
 net session >nul 2>&1
 if %errorlevel% neq 0 (
     echo Administrator privileges required. Exiting.
-    exit 1 /b
-    pause
+	pause    
+	exit 1 /b
 )
 
 :: ===========================================
@@ -48,6 +48,13 @@ if "%BUILD_RELEASE%"=="" (
     cmake -B build -DCMAKE_POLICY_VERSION_MINIMUM="3.5" -DGODOTCPP_TARGET="template_release"
 )
 
+:: Check if the configuring step failed
+if %ERRORLEVEL% neq 0 (
+    echo ============================================
+    echo  Configuration failed with error code %ERRORLEVEL%.
+    echo ============================================
+    exit /b %ERRORLEVEL%
+)
 :: =============================================
 :: Build the solution
 :: =============================================
@@ -59,10 +66,17 @@ if "%BUILD_RELEASE%"=="" (
 ) else (
    cmake --build build --config Release
 )
-if %errorlevel% neq 0 (
-   echo ============================================
-   echo  Build completed successfully.
-   echo ============================================
+
+:: Check if the build itself failed
+if %ERRORLEVEL% neq 0 (
+    echo ============================================
+    echo  Build failed with error code %ERRORLEVEL%.
+    echo ============================================
+    exit /b %ERRORLEVEL%
 )
+
+echo ============================================
+echo  Build completed successfully.
+echo ============================================
 
 exit /b 0
