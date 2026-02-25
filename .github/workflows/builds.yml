@@ -10,28 +10,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-#         # A build is made for every possible combination of parameters
-#         # You can add or remove entries from the arrays of each parameter to customize which builds you want to run
-#         # See https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/running-variations-of-jobs-in-a-workflow
         target:
           [
-#             { platform: linux, arch: x86_64, os: ubuntu-22.04 },
-#             { platform: linux, arch: x86_32, os: ubuntu-22.04 },
-#             { platform: linux, arch: arm64, os: ubuntu-22.04-arm },
-#             { platform: linux, arch: arm32, os: ubuntu-22.04-arm },
+            { platform: linux, arch: x86_64, os: ubuntu-24.04 },
             { platform: windows, arch: x86_64, os: windows-latest },
-#             { platform: windows, arch: x86_32, os: windows-latest },
-#             { platform: windows, arch: arm64, os: windows-latest },
-#             { platform: macos, arch: universal, os: macos-latest },
-#             { platform: android, arch: x86_64, os: ubuntu-22.04 },
-#             { platform: android, arch: x86_32, os: ubuntu-22.04 },
-#             { platform: android, arch: arm64, os: ubuntu-22.04 },
-#             { platform: android, arch: arm32, os: ubuntu-22.04 },
-#             { platform: ios, arch: arm64, os: macos-latest },
-#             { platform: web, arch: wasm32, os: ubuntu-22.04 },
           ]
-        target-type: [template_debug] #, template_release]
-#         float-precision: [single, double]
+        target-type: [template_debug, template_release]
+#         float-precision: [single, double]  # TODO if someone ever asks for a build with the double version.
 
     runs-on: ${{ matrix.target.os }}
     steps:
@@ -41,34 +26,27 @@ jobs:
         with:
           submodules: true
 
-#       # Add linux x86_32 toolchain
-#       - name: Install multilib support
-#         if: ${{ matrix.target.platform == 'linux' && matrix.target.arch == 'x86_32' }}
-#         run: |
-#           sudo apt-get update && sudo apt-get install -y gcc-multilib g++-multilib
-
-#       # Build GDExtension (with caches)
-
-#       - name: Build GDExtension Debug Build
-#         shell: sh
-#         env:
-#           SCONS_CACHE: ${{ github.workspace }}/.scons-cache/
-#         run: |
-#           scons target=${{ matrix.target-type }} platform=${{ matrix.target.platform }} arch=${{ matrix.target.arch }} precision=${{ matrix.float-precision }}
-
-#       # Setup dependencies
-#       - name: Setup godot-cpp
-#         uses: ./godot-cpp/.github/actions/setup-godot-cpp
-#         with:
-#           platform: ${{ matrix.target.platform }}
-#           em-version: 3.1.62
-
+      - name: linux - build
+        if: ${{ matrix.target.platform != 'windows' }}
+        env:
+          CODESIGN_APP_SECUREFILEPATH: ${{ inputs.apple-application-cert }}
+        shell: bash
+        run: |
+          if [ "${{ matrix.target-type }}" = "template_release" ]; then
+             BUILD_RELEASE=yes ./build.sh
+          else
+             ./build.sh
+          fi
 
       - name: Windows - build
         if: ${{ matrix.target.platform == 'windows' }}
         shell: cmd
         run: |
-          cmd /c call "build_windows.cmd"
+          if "${{ matrix.target-type }}"=="template_release" (
+             cmd /c "set BUILD_RELEASE=YES && call build_windows.cmd"
+          ) else (
+             cmd /c call "build_windows.cmd"
+          )
 
       # Clean up compilation files
       - name: Windows - Delete compilation files
