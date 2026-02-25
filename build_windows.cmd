@@ -1,5 +1,4 @@
 echo on
-setlocal EnableDelayedExpansion
 setlocal
 
 cd /d "%~dp0"
@@ -41,7 +40,6 @@ echo ============================================
 echo ============================================
 echo  Configuring project with CMake
 echo ============================================
-IF DEFINED BUILD_RELEASE (ECHO BUILD_RELEASE IS defined) ELSE (ECHO BUILD_RELEASE is NOT defined)
 
 if "%BUILD_RELEASE%"=="" (
     :: if BUILD_RELEASE is unset, build in debug mode

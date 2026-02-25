@@ -10,25 +10,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-#         # A build is made for every possible combination of parameters
-#         # You can add or remove entries from the arrays of each parameter to customize which builds you want to run
-#         # See https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/running-variations-of-jobs-in-a-workflow
         target:
           [
             { platform: linux, arch: x86_64, os: ubuntu-24.04 },
             { platform: windows, arch: x86_64, os: windows-latest },
-#             { platform: windows, arch: x86_32, os: windows-latest },
-#             { platform: windows, arch: arm64, os: windows-latest },
-#             { platform: macos, arch: universal, os: macos-latest },
-#             { platform: android, arch: x86_64, os: ubuntu-22.04 },
-#             { platform: android, arch: x86_32, os: ubuntu-22.04 },
-#             { platform: android, arch: arm64, os: ubuntu-22.04 },
-#             { platform: android, arch: arm32, os: ubuntu-22.04 },
-#             { platform: ios, arch: arm64, os: macos-latest },
-#             { platform: web, arch: wasm32, os: ubuntu-22.04 },
           ]
         target-type: [template_debug, template_release]
-#         float-precision: [single, double]
+#         float-precision: [single, double]  # TODO if someone ever asks for a build with the double version.
 
     runs-on: ${{ matrix.target.os }}
     steps:
@@ -50,20 +38,15 @@ jobs:
              ./build.sh
           fi
 
-
       - name: Windows - build
         if: ${{ matrix.target.platform == 'windows' }}
         shell: cmd
         run: |
-          setlocal EnableDelayedExpansion
           if "${{ matrix.target-type }}"=="template_release" (
-             echo "RELEASE"
              cmd /c "set BUILD_RELEASE=YES && call build_windows.cmd"
           ) else (
-             echo "DEBUG"
              cmd /c call "build_windows.cmd"
           )
-
 
       # Clean up compilation files
       - name: Windows - Delete compilation files
