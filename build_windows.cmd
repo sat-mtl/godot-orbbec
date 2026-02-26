@@ -8,9 +8,8 @@ cd /d "%~dp0"
 :: ===========================================
 net session >nul 2>&1
 if %errorlevel% neq 0 (
-    echo Administrator privileges required. Elevating...
-    powershell -Command "Start-Process '%~f0' -Verb runAs"
-    exit /b
+    echo Administrator privileges required. Exiting.
+    exit 1 /b
 )
 
 :: ===========================================
