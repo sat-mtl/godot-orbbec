@@ -16,7 +16,6 @@ void OrbbecDevices::refresh_device_list() {
 
 void OrbbecDevices::_ready() {
   refresh_device_list();
-  emit_signal("point_cloud_frame", this);
 }
 
 PackedStringArray OrbbecDevices::get_devices_ips() {
@@ -64,7 +63,7 @@ void OrbbecPointCloud::_bind_methods() {
   godot::ClassDB::bind_method(D_METHOD("get_thinning"), &OrbbecPointCloud::get_thinning);
   godot::ClassDB::bind_method(D_METHOD("set_thinning", "p_thinning"), &OrbbecPointCloud::set_thinning);
   ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "thinning"), "set_thinning", "get_thinning");
-  ADD_SIGNAL(MethodInfo("point_cloud_frame", PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "new_point_cloud_frame")));
+  ADD_SIGNAL(MethodInfo("point_cloud_frame", PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "points"), PropertyInfo(Variant::PACKED_FLOAT32_ARRAY, "raw_buffer")));
 }
 
 void OrbbecPointCloud::set_device_from_predicate(predicate_type predicate) {
@@ -121,29 +120,51 @@ void OrbbecPointCloud::start_stream() {
     config->setFrameAggregateOutputMode(OB_FRAME_AGGREGATE_OUTPUT_ALL_TYPE_FRAME_REQUIRE);
     // 4.Start the pipeline with config and callback.
     pipeline->start(config, [&, this](std::shared_ptr<ob::FrameSet> frameSet) {
-      // print_line("got frameset");
       auto frame = point_cloud_filter->process(frameSet)->as<ob::PointsFrame>();
       uint32_t width  = frame->getWidth();
       uint32_t height = frame->getHeight();
 
       PackedVector3Array point_cloud_data;
+      PackedFloat32Array point_cloud_raw_buffer;
       point_cloud_data.resize(width*height);
+      point_cloud_raw_buffer.resize(width*height*floats_per_raw_point);
       const uint8_t* data = frame->getData();
       uint32_t real_size = 0;
       OBPoint *points = reinterpret_cast<OBPoint *>(const_cast<uint8_t *>(data));
+      const auto& basis = identity_transform.basis.rows;
       for(uint32_t y = 0; y < height; ++y) {
         for(uint32_t x = 0; x < width; ++x) {
           int idx = y * width + x;
           const auto &pt = points[idx];
           if (thinning_mask[idx%thinning_mask_size] > thinning && std::fabs(pt.z) >= min_point_value) {
-            point_cloud_data[real_size] = Vector3(pt.x/1000.0f, -pt.y/1000.0f, pt.z/1000.0f);
+            float x = pt.x/1000.0f;
+            float y = pt.y/1000.0f;
+            float z = pt.z/1000.0f;
+
+            point_cloud_data[real_size] = Vector3(x, y, z);
+
+            // doc for this order is here : https://docs.godotengine.org/en/stable/classes/class_renderingserver.html#class-renderingserver-method-multimesh-set-buffer
+            point_cloud_raw_buffer[real_size * floats_per_raw_point] = basis[0][0];
+            point_cloud_raw_buffer[real_size * floats_per_raw_point + 1] = basis[1][0];
+            point_cloud_raw_buffer[real_size * floats_per_raw_point + 2] = basis[2][0];
+            point_cloud_raw_buffer[real_size * floats_per_raw_point + 3] = x;
+            point_cloud_raw_buffer[real_size * floats_per_raw_point + 4] = basis[0][1];
+            point_cloud_raw_buffer[real_size * floats_per_raw_point + 5] = basis[1][1];
+            point_cloud_raw_buffer[real_size * floats_per_raw_point + 6] = basis[2][1];
+            point_cloud_raw_buffer[real_size * floats_per_raw_point + 7] = y;
+            point_cloud_raw_buffer[real_size * floats_per_raw_point + 8] = basis[0][2];
+            point_cloud_raw_buffer[real_size * floats_per_raw_point + 9] = basis[1][2];
+            point_cloud_raw_buffer[real_size * floats_per_raw_point + 10] = basis[2][2];
+            point_cloud_raw_buffer[real_size * floats_per_raw_point + 11] = z;
+
             real_size+=1;
           }
         }
       }
       point_cloud_data.resize(real_size);
+      point_cloud_raw_buffer.resize(real_size*floats_per_raw_point);
       // need to call_deferred because this code ends up being called outside of the engine thread.
-      call_deferred("emit_signal", "point_cloud_frame", point_cloud_data);
+      call_deferred("emit_signal", "point_cloud_frame", point_cloud_data, point_cloud_raw_buffer);
     });
   }
   catch( const std::exception & ex ) {
