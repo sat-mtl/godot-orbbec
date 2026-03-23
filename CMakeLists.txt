@@ -109,7 +109,6 @@ if (WIN32)
   )
 endif()
 
-file(GENERATE OUTPUT "${BINARY_DIR}/lol.txt" CONTENT "$<TARGET_FILE:OrbbecSDK>")
 if (LINUX)
   # fetch libOrbbecSDK.dll when compiling under windows.
   add_custom_command(TARGET ${LIBNAME} POST_BUILD
