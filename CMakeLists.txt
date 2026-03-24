@@ -88,7 +88,14 @@ set_target_properties(${LIBNAME}
     OUTPUT_NAME "${LIBNAME}${GODOTCPP_SUFFIX}"
 )
 
+if (LINUX)
+  # hardcode ./ and ./bin/linux and ./addons/godot-orbbec/bin/linux in the rpath
+  # to make sure the .so can find the orbbecsdk.so file in the most likely places
+  set_target_properties(${LIBNAME} PROPERTIES LINK_FLAGS "-Wl,-rpath,./bin/linux -Wl,-rpath,./ -Wl,-rpath,./addons/godot-orbbec/bin/linux")
+endif()
+
 set(GODOT_PROJECT_BINARY_DIR "${PROJECT_SOURCE_DIR}/${GODOT_PROJECT_DIR}/bin/${GODOTCPP_PLATFORM}")
+set(BINARY_DIR "${PROJECT_SOURCE_DIR}/bin/${GODOTCPP_PLATFORM}")
 
 add_custom_command(TARGET ${LIBNAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${LIBNAME}>" "${GODOT_PROJECT_BINARY_DIR}/$<TARGET_FILE_NAME:${LIBNAME}>"
@@ -97,8 +104,19 @@ add_custom_command(TARGET ${LIBNAME} POST_BUILD
 if (WIN32)
   # fetch OrbbecSDK.dll when compiling under windows.
   add_custom_command(TARGET ${LIBNAME} POST_BUILD
-    # COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE_DIR:${LIBNAME}>/OrbbecSDK.dll" "${GODOT_PROJECT_BINARY_DIR}/OrbbecSDK.dll"
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:OrbbecSDK>" "${GODOT_PROJECT_BINARY_DIR}/OrbbecSDK.dll"
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:OrbbecSDK>" "$<TARGET_FILE_DIR:${LIBNAME}>/OrbbecSDK.dll"
+  )
+endif()
+
+if (LINUX)
+  # fetch libOrbbecSDK.dll when compiling under windows.
+  add_custom_command(TARGET ${LIBNAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:OrbbecSDK>" "${GODOT_PROJECT_BINARY_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_SONAME_FILE:OrbbecSDK>" "${GODOT_PROJECT_BINARY_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_LINKER_FILE_DIR:OrbbecSDK>/$<TARGET_LINKER_FILE_NAME:OrbbecSDK>" "${GODOT_PROJECT_BINARY_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:OrbbecSDK>" "${BINARY_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_SONAME_FILE:OrbbecSDK>" "${BINARY_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_LINKER_FILE_DIR:OrbbecSDK>/$<TARGET_LINKER_FILE_NAME:OrbbecSDK>" "${BINARY_DIR}"
   )
 endif()
