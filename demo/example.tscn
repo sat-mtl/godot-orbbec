@@ -14,6 +14,7 @@ script = ExtResource("1_jdh55")
 unique_name_in_owner = true
 
 [node name="OrbbecPointCloud" type="OrbbecPointCloud" parent="."]
+thinning = 0.0
 unique_name_in_owner = true
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]

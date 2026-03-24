@@ -4,6 +4,7 @@
 #include "godot_cpp/classes/wrapped.hpp"
 #include "godot_cpp/variant/variant.hpp"
 #include "godot_cpp/variant/char_string.hpp"
+#include "godot_cpp/variant/transform3d.hpp"
 #include <libobsensor/ObSensor.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 
@@ -67,7 +68,12 @@ public:
   float get_thinning();
 private:
   float thinning = 0.5;
+  /**
+   * used to create raw multimesh buffers from point cloud data
+   */
+  const Transform3D identity_transform{};
   static constexpr size_t thinning_mask_size = 100000;
+  static constexpr size_t floats_per_raw_point = 12;
   std::array<float, thinning_mask_size> thinning_mask;
   std::unique_ptr<ob::Pipeline> pipeline;
   std::unique_ptr<ob::PointCloudFilter> point_cloud_filter = std::make_unique<ob::PointCloudFilter>();
