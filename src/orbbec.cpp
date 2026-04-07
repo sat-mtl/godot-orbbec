@@ -55,13 +55,30 @@ float OrbbecPointCloud::get_thinning() {
   return thinning;
 }
 
+Array OrbbecPointCloud::get_stream_formats() {
+  Array available_formats{};
+  auto formats = stream_formats[device];
+  // Ideally, the stream_formats map would already be a godot Array of Dictionarys but
+  // godot-cpp does not support std::initializer_list constructors.
+  for(const& auto format: formats) {
+    Dictionary format_dict{};
+    format_dict["x_res"] = format.x_resolution;
+    format_dict["y_res"] = format.y_resolution;
+    format_dict["description"] = format.description;
+    available_formats.push_back(format_dict);
+  }
+  return available_formats
+}
+
 void OrbbecPointCloud::_bind_methods() {
   godot::ClassDB::bind_method(D_METHOD("start_stream"), &OrbbecPointCloud::start_stream);
+  godot::ClassDB::bind_method(D_METHOD("start_stream", "xres", "yres", "framerate"), &OrbbecPointCloud::start_stream);
   godot::ClassDB::bind_method(D_METHOD("stop_stream"), &OrbbecPointCloud::stop_stream);
   godot::ClassDB::bind_method(D_METHOD("set_device_from_ip", "ip"), &OrbbecPointCloud::set_device_from_ip);
   godot::ClassDB::bind_method(D_METHOD("set_device_from_serial_number", "serial_number"), &OrbbecPointCloud::set_device_from_serial_number);
   godot::ClassDB::bind_method(D_METHOD("get_thinning"), &OrbbecPointCloud::get_thinning);
   godot::ClassDB::bind_method(D_METHOD("set_thinning", "p_thinning"), &OrbbecPointCloud::set_thinning);
+  godot::ClassDB::bind_method(D_METHOD("get_stream_formats"), &OrbbecPointCloud::get_stream_formats);
   ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "thinning"), "set_thinning", "get_thinning");
   ADD_SIGNAL(MethodInfo("point_cloud_frame", PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "points"), PropertyInfo(Variant::PACKED_FLOAT32_ARRAY, "raw_buffer")));
 }
@@ -102,6 +119,10 @@ void OrbbecPointCloud::stop_stream() {
 }
 
 void OrbbecPointCloud::start_stream() {
+  start_stream(512, 512, 30);
+}
+
+void OrbbecPointCloud::start_stream(uint32_t xres, uint32_t yres, uint32_t framerate) {
   if (!device) {
     print_line("Not starting stream, please set a device.");
     return;
@@ -114,8 +135,7 @@ void OrbbecPointCloud::start_stream() {
     pipeline = std::make_unique<ob::Pipeline>(device);
     pipeline->enableFrameSync();
     config = std::make_shared<ob::Config>();
-    config->enableVideoStream(OB_STREAM_DEPTH, OB_WIDTH_ANY, OB_HEIGHT_ANY, OB_FPS_ANY, OB_FORMAT_ANY);
-    config->enableVideoStream(OB_STREAM_COLOR, OB_WIDTH_ANY, OB_HEIGHT_ANY, OB_FPS_ANY, OB_FORMAT_RGB);
+    config->enableVideoStream(OB_STREAM_DEPTH, xres, yres, framerate, OB_FORMAT_ANY);
     // set frame aggregate output mode to all type frame require. therefor, the output frameset will contain all type of frames
     config->setFrameAggregateOutputMode(OB_FRAME_AGGREGATE_OUTPUT_ALL_TYPE_FRAME_REQUIRE);
     // 4.Start the pipeline with config and callback.

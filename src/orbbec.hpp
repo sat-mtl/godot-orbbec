@@ -5,6 +5,8 @@
 #include "godot_cpp/variant/variant.hpp"
 #include "godot_cpp/variant/char_string.hpp"
 #include "godot_cpp/variant/transform3d.hpp"
+#include "godot_cpp/variant/dictionary.hpp"
+#include "godot_cpp/variant/array.hpp"
 #include <libobsensor/ObSensor.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 
@@ -45,6 +47,20 @@ private:
   void populate_device_from_idx(uint32_t idx);
 };
 
+struct StreamFormat {
+  uint32_t x_resolution;
+  uint32_t y_resolution;
+  String description;
+};
+
+enum DeviceType {
+  ORBBEC_FEMTO_MEGA
+};
+
+const std::map<DeviceType, std::array<StreamConfiguration>> stream_formats{
+  {ORBBEC_FEMTO_MEGA, {{1024,1024, "WFOV Unbinned"}, {512, 512, "WFOV Binned"}, {640, 576, "NFOV Unbinned"}, {320, 288, "NFOV Binned"}}}
+}
+
 /**
  * Node that gets pointcloud data from an orbbec camera. Use the OrbbecDevices node to query available nodes.
  */
@@ -57,17 +73,22 @@ protected:
 public:
   OrbbecPointCloud();
   ~OrbbecPointCloud() override = default;
-
   void print_hello();
   void get_sensor_from_idx(uint32_t idx);
   void start_stream();
+  void start_stream(uint32_t xres, uint32_t yres, uint32_t framerate);
   void stop_stream();
   void set_device_from_ip(String ip);
   void set_device_from_serial_number(String serial_number);
   void set_thinning(float thinning);
+  Array get_stream_formats();
   float get_thinning();
 private:
   float thinning = 0.5;
+  /**
+   * we only support orbbec femto megas for now.
+   */
+  DeviceType device = ORBBEC_FEMTO_MEGA;
   /**
    * used to create raw multimesh buffers from point cloud data
    */
