@@ -55,30 +55,21 @@ float OrbbecPointCloud::get_thinning() {
   return thinning;
 }
 
-Array OrbbecPointCloud::get_stream_formats() {
-  Array available_formats{};
-  auto formats = stream_formats[device];
-  // Ideally, the stream_formats map would already be a godot Array of Dictionarys but
-  // godot-cpp does not support std::initializer_list constructors.
-  for(const& auto format: formats) {
-    Dictionary format_dict{};
-    format_dict["x_res"] = format.x_resolution;
-    format_dict["y_res"] = format.y_resolution;
-    format_dict["description"] = format.description;
-    available_formats.push_back(format_dict);
-  }
-  return available_formats
+PackedStringArray OrbbecPointCloud::get_device_stream_formats() {
+  // TODO: make this dynamic when we support more camera types.
+  // I tried to make this a static const inline and it made godot crash everytime.
+  // This will have to be good enough.
+  return PackedStringArray {"1024x1024 (WFOV Unbinned)", "512x512 (WFOV Binned)", "640x576 (NFOV Unbinned)", "320x288 (NFOV Binned)"};
 }
 
 void OrbbecPointCloud::_bind_methods() {
-  godot::ClassDB::bind_method(D_METHOD("start_stream"), &OrbbecPointCloud::start_stream);
   godot::ClassDB::bind_method(D_METHOD("start_stream", "xres", "yres", "framerate"), &OrbbecPointCloud::start_stream);
   godot::ClassDB::bind_method(D_METHOD("stop_stream"), &OrbbecPointCloud::stop_stream);
   godot::ClassDB::bind_method(D_METHOD("set_device_from_ip", "ip"), &OrbbecPointCloud::set_device_from_ip);
   godot::ClassDB::bind_method(D_METHOD("set_device_from_serial_number", "serial_number"), &OrbbecPointCloud::set_device_from_serial_number);
   godot::ClassDB::bind_method(D_METHOD("get_thinning"), &OrbbecPointCloud::get_thinning);
   godot::ClassDB::bind_method(D_METHOD("set_thinning", "p_thinning"), &OrbbecPointCloud::set_thinning);
-  godot::ClassDB::bind_method(D_METHOD("get_stream_formats"), &OrbbecPointCloud::get_stream_formats);
+  godot::ClassDB::bind_method(D_METHOD("get_device_stream_formats"), &OrbbecPointCloud::get_device_stream_formats);
   ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "thinning"), "set_thinning", "get_thinning");
   ADD_SIGNAL(MethodInfo("point_cloud_frame", PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "points"), PropertyInfo(Variant::PACKED_FLOAT32_ARRAY, "raw_buffer")));
 }
@@ -118,11 +109,7 @@ void OrbbecPointCloud::stop_stream() {
   config.reset();
 }
 
-void OrbbecPointCloud::start_stream() {
-  start_stream(512, 512, 30);
-}
-
-void OrbbecPointCloud::start_stream(uint32_t xres, uint32_t yres, uint32_t framerate) {
+void OrbbecPointCloud::start_stream(int xres, int yres, int framerate) {
   if (!device) {
     print_line("Not starting stream, please set a device.");
     return;
