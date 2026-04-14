@@ -82,6 +82,6 @@ private:
   std::shared_ptr<ob::Config> config;
   using predicate_type = std::function<bool(std::shared_ptr<ob::DeviceList>, uint32_t)>;
   void set_device_from_predicate(predicate_type predicate);
-
+  bool device_list_has_ip(String ip);
   void populate_device_from_idx(uint32_t idx);
 };
