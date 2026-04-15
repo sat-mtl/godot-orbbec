@@ -55,19 +55,29 @@ protected:
   static void _bind_methods();
 
 public:
+  /**
+   * unused for now.
+   */
+  enum DepthCamType {
+    ORBBEC_FEMTO_MEGA
+  };
   OrbbecPointCloud();
   ~OrbbecPointCloud() override = default;
-
   void print_hello();
   void get_sensor_from_idx(uint32_t idx);
-  void start_stream();
+  void start_stream(int xres, int yres, int framerate);
   void stop_stream();
+  PackedStringArray get_device_stream_formats();
   void set_device_from_ip(String ip);
   void set_device_from_serial_number(String serial_number);
   void set_thinning(float thinning);
   float get_thinning();
 private:
   float thinning = 0.5;
+  /**
+   * we only support orbbec femto megas for now.
+   */
+  DepthCamType device_type = DepthCamType::ORBBEC_FEMTO_MEGA;
   /**
    * used to create raw multimesh buffers from point cloud data
    */
