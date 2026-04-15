@@ -55,13 +55,21 @@ float OrbbecPointCloud::get_thinning() {
   return thinning;
 }
 
+PackedStringArray OrbbecPointCloud::get_device_stream_formats() {
+  // TODO: make this dynamic when we support more camera types.
+  // I tried to make this a static const inline and it made godot crash everytime.
+  // This will have to be good enough.
+  return PackedStringArray {"1024x1024 (WFOV Unbinned)", "512x512 (WFOV Binned)", "640x576 (NFOV Unbinned)", "320x288 (NFOV Binned)"};
+}
+
 void OrbbecPointCloud::_bind_methods() {
-  godot::ClassDB::bind_method(D_METHOD("start_stream"), &OrbbecPointCloud::start_stream);
+  godot::ClassDB::bind_method(D_METHOD("start_stream", "xres", "yres", "framerate"), &OrbbecPointCloud::start_stream);
   godot::ClassDB::bind_method(D_METHOD("stop_stream"), &OrbbecPointCloud::stop_stream);
   godot::ClassDB::bind_method(D_METHOD("set_device_from_ip", "ip"), &OrbbecPointCloud::set_device_from_ip);
   godot::ClassDB::bind_method(D_METHOD("set_device_from_serial_number", "serial_number"), &OrbbecPointCloud::set_device_from_serial_number);
   godot::ClassDB::bind_method(D_METHOD("get_thinning"), &OrbbecPointCloud::get_thinning);
   godot::ClassDB::bind_method(D_METHOD("set_thinning", "p_thinning"), &OrbbecPointCloud::set_thinning);
+  godot::ClassDB::bind_method(D_METHOD("get_device_stream_formats"), &OrbbecPointCloud::get_device_stream_formats);
   ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "thinning"), "set_thinning", "get_thinning");
   ADD_SIGNAL(MethodInfo("point_cloud_frame", PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "points"), PropertyInfo(Variant::PACKED_FLOAT32_ARRAY, "raw_buffer")));
 }
@@ -120,7 +128,7 @@ void OrbbecPointCloud::stop_stream() {
   config.reset();
 }
 
-void OrbbecPointCloud::start_stream() {
+void OrbbecPointCloud::start_stream(int xres, int yres, int framerate) {
   if (!device) {
     print_line("Not starting stream, please set a device.");
     return;
@@ -133,8 +141,7 @@ void OrbbecPointCloud::start_stream() {
     pipeline = std::make_unique<ob::Pipeline>(device);
     pipeline->enableFrameSync();
     config = std::make_shared<ob::Config>();
-    config->enableVideoStream(OB_STREAM_DEPTH, OB_WIDTH_ANY, OB_HEIGHT_ANY, OB_FPS_ANY, OB_FORMAT_ANY);
-    config->enableVideoStream(OB_STREAM_COLOR, OB_WIDTH_ANY, OB_HEIGHT_ANY, OB_FPS_ANY, OB_FORMAT_RGB);
+    config->enableVideoStream(OB_STREAM_DEPTH, xres, yres, framerate, OB_FORMAT_ANY);
     // set frame aggregate output mode to all type frame require. therefor, the output frameset will contain all type of frames
     config->setFrameAggregateOutputMode(OB_FRAME_AGGREGATE_OUTPUT_ALL_TYPE_FRAME_REQUIRE);
     // 4.Start the pipeline with config and callback.
