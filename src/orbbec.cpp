@@ -1,5 +1,6 @@
 #include "orbbec.hpp"
 #include <libobsensor/ObSensor.hpp>
+#include "godot_cpp/classes/rendering_server.hpp"
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 #include <stdlib.h>
 
@@ -40,41 +41,7 @@ PackedStringArray OrbbecDevices::get_devices_serial_numbers() {
   return serials;
 };
 
-OrbbecPointCloud::OrbbecPointCloud() {
-  // create a random thinning mask.
-  for (int i=0; i < thinning_mask_size; ++i) {
-    thinning_mask[i] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-  }
-}
-
-void OrbbecPointCloud::set_thinning(float thin) {
-  thinning = thin;
-}
-
-float OrbbecPointCloud::get_thinning() {
-  return thinning;
-}
-
-PackedStringArray OrbbecPointCloud::get_device_stream_formats() {
-  // TODO: make this dynamic when we support more camera types.
-  // I tried to make this a static const inline and it made godot crash everytime.
-  // This will have to be good enough.
-  return PackedStringArray {"1024x1024 (WFOV Unbinned)", "512x512 (WFOV Binned)", "640x576 (NFOV Unbinned)", "320x288 (NFOV Binned)"};
-}
-
-void OrbbecPointCloud::_bind_methods() {
-  godot::ClassDB::bind_method(D_METHOD("start_stream", "xres", "yres", "framerate"), &OrbbecPointCloud::start_stream);
-  godot::ClassDB::bind_method(D_METHOD("stop_stream"), &OrbbecPointCloud::stop_stream);
-  godot::ClassDB::bind_method(D_METHOD("set_device_from_ip", "ip"), &OrbbecPointCloud::set_device_from_ip);
-  godot::ClassDB::bind_method(D_METHOD("set_device_from_serial_number", "serial_number"), &OrbbecPointCloud::set_device_from_serial_number);
-  godot::ClassDB::bind_method(D_METHOD("get_thinning"), &OrbbecPointCloud::get_thinning);
-  godot::ClassDB::bind_method(D_METHOD("set_thinning", "p_thinning"), &OrbbecPointCloud::set_thinning);
-  godot::ClassDB::bind_method(D_METHOD("get_device_stream_formats"), &OrbbecPointCloud::get_device_stream_formats);
-  ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "thinning"), "set_thinning", "get_thinning");
-  ADD_SIGNAL(MethodInfo("point_cloud_frame", PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "points"), PropertyInfo(Variant::PACKED_FLOAT32_ARRAY, "raw_buffer")));
-}
-
-void OrbbecPointCloud::set_device_from_predicate(predicate_type predicate) {
+void OrbbecPointCloudBase::set_device_from_predicate(predicate_type predicate) {
   std::shared_ptr<ob::DeviceList> devices = ob_ctx.queryDeviceList();
   for (uint32_t i = 0; i < devices->getCount(); ++i) {
     if (predicate(devices, i)) {
@@ -90,23 +57,159 @@ void OrbbecPointCloud::set_device_from_predicate(predicate_type predicate) {
   }
 }
 
-void OrbbecPointCloud::set_device_from_ip(String ip) {
+void OrbbecPointCloudBase::set_device_from_ip(String ip) {
   set_device_from_predicate([&](std::shared_ptr<ob::DeviceList> devices, uint32_t idx) {
     return devices->getIpAddress(idx) == ip;
   });
 }
 
-void OrbbecPointCloud::set_device_from_serial_number(String serial_number) {
+void OrbbecPointCloudBase::set_device_from_serial_number(String serial_number) {
   set_device_from_predicate([&](std::shared_ptr<ob::DeviceList> devices, uint32_t idx) {
     return devices->getSerialNumber(idx) == serial_number;
   });
 }
 
-void OrbbecPointCloud::stop_stream() {
+void OrbbecPointCloudBase::stop_stream() {
   // deleting the pipeline makes the stream stop.
   pipeline.reset();
   // probably don't need to do this but it can't hurt too much
   config.reset();
+}
+
+PackedStringArray OrbbecPointCloudBase::get_device_stream_formats() {
+  // TODO: make this dynamic when we support more camera types.
+  // I tried to make this a static const inline and it made godot crash everytime.
+  // This will have to be good enough.
+  return PackedStringArray {"1024x1024 (WFOV Unbinned)", "512x512 (WFOV Binned)", "640x576 (NFOV Unbinned)", "320x288 (NFOV Binned)"};
+}
+
+void OrbbecPointCloudBase::_bind_methods() {
+  godot::ClassDB::bind_method(D_METHOD("stop_stream"), &OrbbecPointCloudBase::stop_stream);
+  godot::ClassDB::bind_method(D_METHOD("set_device_from_ip", "ip"), &OrbbecPointCloudBase::set_device_from_ip);
+  godot::ClassDB::bind_method(D_METHOD("set_device_from_serial_number", "serial_number"), &OrbbecPointCloudBase::set_device_from_serial_number);
+  godot::ClassDB::bind_method(D_METHOD("get_device_stream_formats"), &OrbbecPointCloudBase::get_device_stream_formats);
+}
+
+void OrbbecPointCloudGPU::allocate_point_cloud_buffer() {
+  if (rd == nullptr) {
+    print_line("please set a rendering device before starting a point cloud stream");
+    return;
+  }
+  uint32_t bytes_needed = xres * yres * floats_per_points * bytes_per_float;
+  std::cout << bytes_needed << "\n";
+
+  PackedByteArray empty_bytes{};
+  empty_bytes.resize(bytes_needed);
+  point_bytes.resize(bytes_needed);
+  std::cout << "resized" << "\n";
+  if (!rd->has_feature(RenderingDevice::Features::SUPPORTS_BUFFER_DEVICE_ADDRESS)) {
+    std::cout << "supports" << "\n";
+    point_buffer = rd->storage_buffer_create(bytes_needed, empty_bytes);
+    print_line("your GPU doesn't support getting device address. You won't be able to access the point cloud buffer by its gpu address.");
+  } else {
+    point_buffer = rd->storage_buffer_create(bytes_needed, empty_bytes, 0, RenderingDevice::BufferCreationBits::BUFFER_CREATION_DEVICE_ADDRESS_BIT);
+  }
+}
+
+void OrbbecPointCloudGPU::_enter_tree() {
+  if (rd != nullptr) {
+    allocate_point_cloud_buffer();
+  }
+}
+
+void OrbbecPointCloudGPU::_exit_tree() {
+  // delete buffer with num_points points
+  rd->free_rid(point_buffer);
+}
+
+void OrbbecPointCloudGPU::set_rendering_device(RenderingDevice* rendering_device) {
+  rd = rendering_device;
+}
+
+RenderingDevice* OrbbecPointCloudGPU::get_rendering_device() {
+  return rd;
+}
+
+void OrbbecPointCloudGPU::_bind_methods() {
+  godot::ClassDB::bind_method(D_METHOD("start_stream", "xres", "yres", "framerate"), &OrbbecPointCloudBase::start_stream);
+  godot::ClassDB::bind_method(D_METHOD("get_rendering_device"), &OrbbecPointCloudGPU::get_rendering_device);
+  godot::ClassDB::bind_method(D_METHOD("set_rendering_device", "p_rendering_device"), &OrbbecPointCloudGPU::set_rendering_device);
+  godot::ClassDB::bind_method(D_METHOD("get_num_points"), &OrbbecPointCloudGPU::get_num_points);
+  godot::ClassDB::bind_method(D_METHOD("get_point_buffer_rid"), &OrbbecPointCloudGPU::get_point_buffer_rid);
+  godot::ClassDB::bind_method(D_METHOD("update_point_cloud_buffer"), &OrbbecPointCloudGPU::update_point_cloud_buffer);
+  ADD_SIGNAL(MethodInfo("point_cloud_frame", PropertyInfo(Variant::RID, "point_cloud_buffer"), PropertyInfo(Variant::PACKED_BYTE_ARRAY, "orbbec_bytes")));
+}
+
+RID OrbbecPointCloudGPU::get_point_buffer_rid() {
+  return point_buffer;
+}
+
+uint32_t OrbbecPointCloudGPU::get_num_points() {
+  return xres*yres;
+}
+
+void OrbbecPointCloudGPU::update_point_cloud_buffer() {
+
+  rd->buffer_update(point_buffer, 0, point_bytes.size(), point_bytes);
+  // not sure we need call_deferred here.
+  emit_signal("point_cloud_frame", point_buffer, point_bytes);
+}
+
+void OrbbecPointCloudGPU::start_stream(int xres, int yres, int framerate) {
+  if (rd == nullptr) {
+    print_line("please set a rendering device before starting a point cloud stream");
+  }
+  if (!device) {
+    print_line("Not starting stream, please set a device.");
+    return;
+  }
+  try {
+    point_cloud_filter->setCreatePointFormat(OB_FORMAT_POINT);
+    pipeline = std::make_unique<ob::Pipeline>(device);
+    pipeline->enableFrameSync();
+    config = std::make_shared<ob::Config>();
+    config->enableVideoStream(OB_STREAM_DEPTH, xres, yres, framerate, OB_FORMAT_ANY);
+    config->setFrameAggregateOutputMode(OB_FRAME_AGGREGATE_OUTPUT_ALL_TYPE_FRAME_REQUIRE);
+    this->xres = xres;
+    this->yres = yres;
+    allocate_point_cloud_buffer();
+    pipeline->start(config, [&, this](std::shared_ptr<ob::FrameSet> frameSet) {
+      auto frame = point_cloud_filter->process(frameSet)->as<ob::PointsFrame>();
+      // we unfortunately need one cpu copy. The function that creates a gpu buffer from a uint8_t* exists in godot but
+      // is not exposed in godot-cpp...
+      std::memcpy(point_bytes.ptrw(), frame->getData(), point_bytes.size());
+      // we can't update the point cloud buffer from a thread other than the main thread or the render thread.
+      RenderingServer::get_singleton()->call_on_render_thread(Callable(this, "update_point_cloud_buffer"));
+    });
+  }
+  catch(const std::exception & ex) {
+    print_line(ex.what());
+    // free the gpu buffer. if we excepted before it was allocated, it will just print an error on the godot side, no big deal.
+    rd->free_rid(point_buffer);
+  }
+}
+
+OrbbecPointCloud::OrbbecPointCloud() {
+  // create a random thinning mask.
+  for (int i=0; i < thinning_mask_size; ++i) {
+    thinning_mask[i] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+  }
+}
+
+void OrbbecPointCloud::set_thinning(float thin) {
+  thinning = thin;
+}
+
+float OrbbecPointCloud::get_thinning() {
+  return thinning;
+}
+
+void OrbbecPointCloud::_bind_methods() {
+  godot::ClassDB::bind_method(D_METHOD("get_thinning"), &OrbbecPointCloud::get_thinning);
+  godot::ClassDB::bind_method(D_METHOD("start_stream", "xres", "yres", "framerate"), &OrbbecPointCloud::start_stream);
+  godot::ClassDB::bind_method(D_METHOD("set_thinning", "p_thinning"), &OrbbecPointCloud::set_thinning);
+  ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "thinning"), "set_thinning", "get_thinning");
+  ADD_SIGNAL(MethodInfo("point_cloud_frame", PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "points"), PropertyInfo(Variant::PACKED_FLOAT32_ARRAY, "raw_buffer")));
 }
 
 void OrbbecPointCloud::start_stream(int xres, int yres, int framerate) {
@@ -116,7 +219,6 @@ void OrbbecPointCloud::start_stream(int xres, int yres, int framerate) {
   }
   try {
     // stolen from the savePointCloudToPly function of the orbbec sdk. I assume this value filters out irrelevant points ?
-    // populate_device_from_idx(idx);
     constexpr auto min_point_value = 1e-6f;
     point_cloud_filter->setCreatePointFormat(OB_FORMAT_POINT);
     pipeline = std::make_unique<ob::Pipeline>(device);
