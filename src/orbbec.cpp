@@ -118,8 +118,10 @@ void OrbbecPointCloudGPU::_enter_tree() {
 }
 
 void OrbbecPointCloudGPU::_exit_tree() {
-  // delete buffer with num_points points
-  rd->free_rid(point_buffer);
+  if (rd != nullptr) {
+      // delete buffer with num_points points
+      rd->free_rid(point_buffer);
+  }
 }
 
 void OrbbecPointCloudGPU::set_rendering_device(RenderingDevice* rendering_device) {
