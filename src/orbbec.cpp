@@ -90,10 +90,29 @@ void OrbbecPointCloud::set_device_from_predicate(predicate_type predicate) {
   }
 }
 
+bool OrbbecPointCloud::device_list_has_ip(String ip) {
+  std::shared_ptr<ob::DeviceList> devices = ob_ctx.queryDeviceList();
+  for (uint32_t i = 0; i < devices->getCount(); ++i) {
+    if (String(devices->getIpAddress(i)) == ip) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void OrbbecPointCloud::set_device_from_ip(String ip) {
-  set_device_from_predicate([&](std::shared_ptr<ob::DeviceList> devices, uint32_t idx) {
-    return devices->getIpAddress(idx) == ip;
-  });
+  if (device_list_has_ip(ip)) {
+    set_device_from_predicate([&](std::shared_ptr<ob::DeviceList> devices, uint32_t idx) {
+      return devices->getIpAddress(idx) == ip;
+    });
+  } else {
+    try {
+      device = ob_ctx.createNetDevice(ip.utf8().get_data(), 8090);
+    } catch (std::exception& ex) {
+      print_line("couldn't open device with ip: ");
+      print_line(ip);
+    }
+  }
 }
 
 void OrbbecPointCloud::set_device_from_serial_number(String serial_number) {
