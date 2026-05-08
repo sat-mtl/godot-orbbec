@@ -15,7 +15,9 @@ void initialize_gdextension_types(ModuleInitializationLevel p_level)
 		return;
 	}
         GDREGISTER_CLASS(OrbbecDevices);
-	GDREGISTER_CLASS(OrbbecPointCloud);
+        GDREGISTER_CLASS(OrbbecPointCloudBase);
+        GDREGISTER_CLASS(OrbbecPointCloud);
+        GDREGISTER_CLASS(OrbbecPointCloudGPU);
 }
 
 void uninitialize_gdextension_types(ModuleInitializationLevel p_level) {
