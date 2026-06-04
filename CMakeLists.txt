@@ -24,7 +24,10 @@ if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/godot-cpp/src")
         COMMAND_ERROR_IS_FATAL ANY
     )
 endif()
+# don't statically link the C++ standard library.
+set(GODOTCPP_USE_STATIC_CPP OFF CACHE BOOL "" FORCE)
 add_subdirectory(godot-cpp SYSTEM)
+
 
 # We need this because otherwise the orbbec sdk cmake tries to copy xml files to root.
 # TODO: figure out if we need those config file somewhere and if so how to put them at
