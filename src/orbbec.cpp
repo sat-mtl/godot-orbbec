@@ -48,9 +48,7 @@ void OrbbecPointCloudBase::set_device_from_predicate(predicate_type predicate) {
       try {
         device = devices->getDevice(i);
       } catch (std::exception & ex) {
-        // TODO: throw a real godot error here.
-        print_line("couldn't open device: ");
-        print_line(ex.what());
+        emit_signal("error_log", (std::string("couldn't open device: ") + ex.what()).c_str());
       }
       return;
     }
@@ -88,11 +86,14 @@ void OrbbecPointCloudBase::_bind_methods() {
   godot::ClassDB::bind_method(D_METHOD("set_device_from_ip", "ip"), &OrbbecPointCloudBase::set_device_from_ip);
   godot::ClassDB::bind_method(D_METHOD("set_device_from_serial_number", "serial_number"), &OrbbecPointCloudBase::set_device_from_serial_number);
   godot::ClassDB::bind_method(D_METHOD("get_device_stream_formats"), &OrbbecPointCloudBase::get_device_stream_formats);
+  ADD_SIGNAL(MethodInfo("success_log", PropertyInfo(Variant::STRING, "log_text")));
+  ADD_SIGNAL(MethodInfo("error_log", PropertyInfo(Variant::STRING, "log_text")));
+  ADD_SIGNAL(MethodInfo("warning_log", PropertyInfo(Variant::STRING, "log_text")));
 }
 
 void OrbbecPointCloudGPU::allocate_point_cloud_buffer() {
   if (rd == nullptr) {
-    print_line("please set a rendering device before starting a point cloud stream");
+    emit_signal("warning_log", "Not allocating buffer : please set a rendering device before starting a point cloud stream");
     return;
   }
   uint32_t bytes_needed = xres * yres * floats_per_points * bytes_per_float;
@@ -101,11 +102,9 @@ void OrbbecPointCloudGPU::allocate_point_cloud_buffer() {
   PackedByteArray empty_bytes{};
   empty_bytes.resize(bytes_needed);
   point_bytes.resize(bytes_needed);
-  std::cout << "resized" << "\n";
   if (!rd->has_feature(RenderingDevice::Features::SUPPORTS_BUFFER_DEVICE_ADDRESS)) {
-    std::cout << "supports" << "\n";
     point_buffer = rd->storage_buffer_create(bytes_needed, empty_bytes);
-    print_line("your GPU doesn't support getting device address. You won't be able to access the point cloud buffer by its gpu address.");
+    emit_signal("warning_log", "Your GPU doesn't support getting device address. You won't be able to access the point cloud buffer by its gpu address.");
   } else {
     point_buffer = rd->storage_buffer_create(bytes_needed, empty_bytes, 0, RenderingDevice::BufferCreationBits::BUFFER_CREATION_DEVICE_ADDRESS_BIT);
   }
@@ -159,10 +158,10 @@ void OrbbecPointCloudGPU::update_point_cloud_buffer() {
 
 void OrbbecPointCloudGPU::start_stream(int xres, int yres, int framerate) {
   if (rd == nullptr) {
-    print_line("please set a rendering device before starting a point cloud stream");
+    emit_signal("warning_log", "Not Starting stream: Please set a rendering device before starting a point cloud stream");
   }
   if (!device) {
-    print_line("Not starting stream, please set a device.");
+    emit_signal("warning_log", "Not Starting stream: Please set an orbbec device before starting the stream");
     return;
   }
   try {
@@ -183,9 +182,10 @@ void OrbbecPointCloudGPU::start_stream(int xres, int yres, int framerate) {
       // we can't update the point cloud buffer from a thread other than the main thread or the render thread.
       RenderingServer::get_singleton()->call_on_render_thread(Callable(this, "update_point_cloud_buffer"));
     });
+    emit_signal("success_log", "Successfully Started stream");
   }
   catch(const std::exception & ex) {
-    print_line(ex.what());
+    emit_signal("error_log", (std::string("Couldn't start stream: ") + ex.what()).c_str());
     // free the gpu buffer. if we excepted before it was allocated, it will just print an error on the godot side, no big deal.
     rd->free_rid(point_buffer);
   }
@@ -216,7 +216,7 @@ void OrbbecPointCloud::_bind_methods() {
 
 void OrbbecPointCloud::start_stream(int xres, int yres, int framerate) {
   if (!device) {
-    print_line("Not starting stream, please set a device.");
+    emit_signal("warning_log", "Not Starting stream: Please set an orbbec device before starting the stream");
     return;
   }
   try {
@@ -277,8 +277,9 @@ void OrbbecPointCloud::start_stream(int xres, int yres, int framerate) {
       // need to call_deferred because this code ends up being called outside of the engine thread.
       call_deferred("emit_signal", "point_cloud_frame", point_cloud_data, point_cloud_raw_buffer);
     });
+    emit_signal("success_log", "Successfully Started stream");
   }
   catch( const std::exception & ex ) {
-    print_line(ex.what());
+    emit_signal("error_log", (std::string("Couldn't start stream: ") + ex.what()).c_str());
   }
 }
