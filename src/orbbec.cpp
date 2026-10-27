@@ -91,13 +91,21 @@ void OrbbecPointCloudBase::_bind_methods() {
   ADD_SIGNAL(MethodInfo("warning_log", PropertyInfo(Variant::STRING, "log_text")));
 }
 
+void OrbbecPointCloudGPU::free_point_cloud_buffer() {
+  if (rd != nullptr && point_buffer.is_valid()) {
+    rd->free_rid(point_buffer);
+  }
+  point_buffer = RID();
+}
+
 void OrbbecPointCloudGPU::allocate_point_cloud_buffer() {
   if (rd == nullptr) {
     emit_signal("warning_log", "Not allocating buffer : please set a rendering device before starting a point cloud stream");
     return;
   }
+  // free the previous buffer
+  free_point_cloud_buffer();
   uint32_t bytes_needed = xres * yres * floats_per_points * bytes_per_float;
-  std::cout << bytes_needed << "\n";
 
   PackedByteArray empty_bytes{};
   empty_bytes.resize(bytes_needed);
@@ -117,14 +125,21 @@ void OrbbecPointCloudGPU::_enter_tree() {
 }
 
 void OrbbecPointCloudGPU::_exit_tree() {
-  if (rd != nullptr) {
-      // delete buffer with num_points points
-      rd->free_rid(point_buffer);
-  }
+  stop_stream();
+  free_point_cloud_buffer();
 }
 
 void OrbbecPointCloudGPU::set_rendering_device(RenderingDevice* rendering_device) {
+  if (rendering_device == rd) {
+    return;
+  }
+  // the buffer belongs to the previous rendering device, free it there and reallocate on the new one.
+  const bool had_buffer = point_buffer.is_valid();
+  free_point_cloud_buffer();
   rd = rendering_device;
+  if (had_buffer && rd != nullptr) {
+    allocate_point_cloud_buffer();
+  }
 }
 
 RenderingDevice* OrbbecPointCloudGPU::get_rendering_device() {
@@ -150,7 +165,9 @@ uint32_t OrbbecPointCloudGPU::get_num_points() {
 }
 
 void OrbbecPointCloudGPU::update_point_cloud_buffer() {
-
+  if (rd == nullptr || !point_buffer.is_valid()) {
+    return;
+  }
   rd->buffer_update(point_buffer, 0, point_bytes.size(), point_bytes);
   // not sure we need call_deferred here.
   emit_signal("point_cloud_frame", point_buffer, point_bytes);
@@ -159,11 +176,14 @@ void OrbbecPointCloudGPU::update_point_cloud_buffer() {
 void OrbbecPointCloudGPU::start_stream(int xres, int yres, int framerate) {
   if (rd == nullptr) {
     emit_signal("warning_log", "Not Starting stream: Please set a rendering device before starting a point cloud stream");
+    return;
   }
   if (!device) {
     emit_signal("warning_log", "Not Starting stream: Please set an orbbec device before starting the stream");
     return;
   }
+  // stop any running stream before reallocating, otherwise its callback could write into point_bytes while it is resized.
+  stop_stream();
   try {
     point_cloud_filter->setCreatePointFormat(OB_FORMAT_POINT);
     pipeline = std::make_unique<ob::Pipeline>(device);
@@ -186,8 +206,8 @@ void OrbbecPointCloudGPU::start_stream(int xres, int yres, int framerate) {
   }
   catch(const std::exception & ex) {
     emit_signal("error_log", (std::string("Couldn't start stream: ") + ex.what()).c_str());
-    // free the gpu buffer. if we excepted before it was allocated, it will just print an error on the godot side, no big deal.
-    rd->free_rid(point_buffer);
+    stop_stream();
+    free_point_cloud_buffer();
   }
 }
 
