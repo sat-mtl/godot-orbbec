@@ -154,6 +154,7 @@ public:
   void update_point_cloud_buffer();
 private:
   void allocate_point_cloud_buffer();
+  void free_point_cloud_buffer();
   RID point_buffer{};
   PackedByteArray point_bytes{};
   RenderingDevice* rd = nullptr;
